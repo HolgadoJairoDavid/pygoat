@@ -10,6 +10,7 @@ import subprocess
 import pickle
 import base64
 from dataclasses import dataclass
+import shlex
 
 def home(request):
     
@@ -20,7 +21,7 @@ def xss_lab(request):
     q=request.GET.get('q','');
     f=FAANG.objects.filter(company=q)
     if f:
-        args={"company":f[0].company,"ceo":f[0].info_set.all()[0].ceo,"about":f[0].info_set.all()[0].about}
+        args={\"company\":f[0].company,\"ceo\":f[0].info_set.all()[0].ceo,\"about\":f[0].info_set.all()[0].about}
         return render(request,'Lab/XSS/xss_lab.html',args)
     else:
         return render(request,'Lab/XSS/xss_lab.html', {'query': q})
@@ -43,15 +44,15 @@ def sql_lab(request):
 
 
 
-            val=login.objects.raw("SELECT * FROM introduction_login WHERE user='"+name+"'AND password='"+password+"'")
+            val=login.objects.raw(\"SELECT * FROM introduction_login WHERE user='\"+name+\"'AND password='\"+password+\"'\")
 
             if val:
                 user=val[0].user;
-                return render(request, 'Lab/SQL/sql_lab.html',{"user1":user})
+                return render(request, 'Lab/SQL/sql_lab.html',{\"user1\":user})
             else:
-                return render(request, 'Lab/SQL/sql_lab.html',{"wrongpass":password})
+                return render(request, 'Lab/SQL/sql_lab.html',{\"wrongpass\":password})
         else:
-            return render(request, 'Lab/SQL/sql_lab.html',{"no": "User not found"})
+            return render(request, 'Lab/SQL/sql_lab.html',{\"no\": \"User not found\"})
     else:
         return render(request, 'Lab/SQL/sql_lab.html')
 
@@ -66,7 +67,7 @@ pickled_user = pickle.dumps(TestUser())
 encoded_user = base64.b64encode(pickled_user)
 
 def insec_des_lab(request):
-    response = render(request,'Lab/insec_des/insec_des_lab.html', {"message":"Only Admins can see this page"})
+    response = render(request,'Lab/insec_des/insec_des_lab.html', {\"message\":\"Only Admins can see this page\"})
     token = request.COOKIES.get('token')
     if token == None:
         token = encoded_user
@@ -75,7 +76,7 @@ def insec_des_lab(request):
         token = base64.b64decode(token)
         admin = pickle.loads(token)
         if admin.admin == 1:
-            response = render(request,'Lab/insec_des/insec_des_lab.html', {"message":"Welcome Admin, SECRETKEY:ADMIN123"})
+            response = render(request,'Lab/insec_des/insec_des_lab.html', {\"message\":\"Welcome Admin, SECRETKEY:ADMIN123\"})
             return response
 
     return response
@@ -94,7 +95,7 @@ def xxe_see(request):
 
     data=comments.objects.all();
     com=data[0].comment
-    return render(request,'Lab/XXE/xxe_lab.html',{"com":com})
+    return render(request,'Lab/XXE/xxe_lab.html',{\"com\":com})
 
 
 
@@ -119,7 +120,7 @@ def xxe_parse(request):
 #***************************************************************Broken Access Control************************************************************#
 @csrf_exempt
 def ba(request):
-    return render(request,"Lab/BrokenAccess/ba.html")
+    return render(request,\"Lab/BrokenAccess/ba.html\")
 @csrf_exempt
 def ba_lab(request):
     name = request.POST.get('name')
@@ -127,25 +128,24 @@ def ba_lab(request):
     if name:
 
 
-        if request.COOKIES.get('admin') == "1":
-            return render(request, 'Lab/BrokenAccess/ba_lab.html', {"data":"Here is your Secret Key :3600"})
+        if request.COOKIES.get('admin') == \"1\":
+            return render(request, 'Lab/BrokenAccess/ba_lab.html', {\"data\":\"Here is your Secret Key :3600\"})
         elif login.objects.filter(user='admin',password=password):
-            html = render(request, 'Lab/BrokenAccess/ba_lab.html', {"data":"Here is your Secret Key :3600"})
-            html.set_cookie("admin", "1",max_age=20);
+            html = render(request, 'Lab/BrokenAccess/ba_lab.html', {\"data\":\"Here is your Secret Key :3600\"})
+            html.set_cookie(\"admin\", \"1\",max_age=20);
             return html
         elif login.objects.filter(user=name,password=password):
-            html = render(request, 'Lab/BrokenAccess/ba_lab.html',{"data":"Welcome Jack"} )
-            html.set_cookie("admin", "0",max_age=20);
+            html = render(request, 'Lab/BrokenAccess/ba_lab.html',{\"data\":\"Welcome Jack\"} )
+            html.set_cookie(\"admin\", \"0\",max_age=20);
             return html
         else:
-            return render(request, 'Lab/BrokenAccess/ba_lab.html', {"data": "User Not Found"})
+            return render(request, 'Lab/BrokenAccess/ba_lab.html', {\"data\": \"User Not Found\"})
 
     else:
-        return render(request,'Lab/BrokenAccess/ba_lab.html',{"data":"Please Provide Credentials"})
+        return render(request,'Lab/BrokenAccess/ba_lab.html',{\"data\":\"Please Provide Credentials\"})
 
 
 #********************************************************Sensitive Data Exposure*****************************************************#
-
 
 def data_exp(request):
     return  render(request,'Lab/DataExp/data_exp.html')
@@ -167,84 +167,94 @@ def cmd(request):
     return render(request,'Lab/CMD/cmd.html')
 @csrf_exempt
 def cmd_lab(request):
-    if(request.method=="POST"):
+    if(request.method==\"POST\"):
         domain=request.POST.get('domain')
-        domain=domain.replace("https://www.",'')
-        os=request.POST.get('os')
-        print(os)
-        if(os=='win'):
-            command="nslookup {}".format(domain)
+        domain=domain.replace(\"https://www.\", '')
+        os_type=request.POST.get('os')
+        print(os_type)
+        
+        if(os_type=='win'):
+            command_name = \"nslookup\"
         else:
-            command = "dig {}".format(domain)
+            command_name = \"dig\"
 
-        output=subprocess.check_output(command,shell=True,encoding="UTF-8");
+        # Use a list to pass arguments to the subprocess call and avoid shell=True
+        command = [command_name, domain]
+        
+        try:
+            # Set a timeout for the subprocess call to prevent denial-of-service
+            output = subprocess.check_output(command, encoding=\"UTF-8\", timeout=5, stderr=subprocess.STDOUT)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+            output = f\"Error executing command: {e}\"
+        except FileNotFoundError:
+            output = f\"Error: The command '{command_name}' was not found on the system.\"
+
         print(output)
-        return render(request,'Lab/CMD/cmd_lab.html',{"output":output})
+        return render(request,'Lab/CMD/cmd_lab.html',{\"output\":output})
     else:
         return render(request, 'Lab/CMD/cmd_lab.html')
 
 
 #******************************************Broken Authentication**************************************************#
 def bau(request):
-    return render(request,"Lab/BrokenAuth/bau.html")
+    return render(request,\"Lab/BrokenAuth/bau.html\")
 def bau_lab(request):
-    if request.method=="GET":
-        return render(request,"Lab/BrokenAuth/bau_lab.html")
+    if request.method==\"GET\":
+        return render(request,\"Lab/BrokenAuth/bau_lab.html\")
     else:
-        return render(request, 'Lab/BrokenAuth/bau_lab.html', {"wrongpass":"yes"})
-
+        return render(request, 'Lab/BrokenAuth/bau_lab.html', {\"wrongpass\":\"yes\"})
 
 
 def login_otp(request):
-    return render(request,"Lab/BrokenAuth/otp.html")
+    return render(request,\"Lab/BrokenAuth/otp.html\")
 
 @csrf_exempt
 def Otp(request):
-    if request.method=="GET":
+    if request.method==\"GET\":
         email=request.GET.get('email');
         otpN=randint(100,999)
         if email and otpN:
-            if email=="admin@pygoat.com":
+            if email==\"admin@pygoat.com\":
                 otp.objects.filter(id=2).update(otp=otpN)
-                html = render(request, "Lab/BrokenAuth/otp.html", {"otp":"Sent To Admin Mail ID"})
-                html.set_cookie("email", email);
+                html = render(request, \"Lab/BrokenAuth/otp.html\", {\"otp\":\"Sent To Admin Mail ID\"})
+                html.set_cookie(\"email\", email);
                 return html
 
             else:
                 otp.objects.filter(id=1).update(email=email, otp=otpN)
-                html=render (request,"Lab/BrokenAuth/otp.html",{"otp":otpN})
-                html.set_cookie("email",email);
+                html=render (request,\"Lab/BrokenAuth/otp.html\",{\"otp\":otpN})
+                html.set_cookie(\"email\",email);
                 return html;
         else:
-            return render(request,"Lab/BrokenAuth/otp.html")
+            return render(request,\"Lab/BrokenAuth/otp.html\")
     else:
-        otpR=request.POST.get("otp")
-        email=request.COOKIES.get("email")
+        otpR=request.POST.get(\"otp\")
+        email=request.COOKIES.get(\"email\")
         if otp.objects.filter(email=email,otp=otpR) or otp.objects.filter(id=2,otp=otpR):
-            return HttpResponse("<h3>Login Success for email:::"+email+"</h3>")
+            return HttpResponse(\"<h3>Login Success for email:::\"+email+\"</h3>\")
         else:
-            return render(request,"Lab/BrokenAuth/otp.html",{"otp":"Invalid OTP Please Try Again"})
+            return render(request,\"Lab/BrokenAuth/otp.html\",{\"otp\":\"Invalid OTP Please Try Again\"})
 
 
 #*****************************************Security Misconfiguration**********************************************#
 
 def sec_mis(request):
-    return render(request,"Lab/sec_mis/sec_mis.html")
+    return render(request,\"Lab/sec_mis/sec_mis.html\")
 
 def sec_mis_lab(request):
-    return render(request,"Lab/sec_mis/sec_mis_lab.html")
+    return render(request,\"Lab/sec_mis/sec_mis_lab.html\")
 
 def secret(request):
     XHost = request.headers.get('X-Host', 'None')
     if(XHost == 'admin.localhost:8000'):
-        return render(request,"Lab/sec_mis/sec_mis_lab.html", {"secret": "SECERTKEY123"})
+        return render(request,\"Lab/sec_mis/sec_mis_lab.html\", {\"secret\": \"SECERTKEY123\"})
     else:
-        return render(request,"Lab/sec_mis/sec_mis_lab.html", {"secret": "Only admin.localhost:8000 can access, Your X-Host is " + XHost})
+        return render(request,\"Lab/sec_mis/sec_mis_lab.html\", {\"secret\": \"Only admin.localhost:8000 can access, Your X-Host is \" + XHost})
 
 
 #**********************************************************A9*************************************************#
 
 def a9(request):
-    return render(request,"Lab/A9/a9.html")
+    return render(request,\"Lab/A9/a9.html\")
 def a9_lab(request):
-    return render(request,"Lab/A9/a9_lab.html")
+    return render(request,\"Lab/A9/a_lab.html\")
